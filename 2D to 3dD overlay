@@ -1,0 +1,39 @@
+import open3d as o3d
+import numpy as np
+
+# Load the PLY point cloud
+pcd = o3d.io.read_point_cloud("/mnt/64387D04387CD690/AAA Projects/Goat 3D/pointclouds/Depth Data/pointcloud_002.ply")
+
+# Convert to numpy array
+points = np.asarray(pcd.points)  # shape: (N, 3)
+
+# If your PLY is organized (width x height), reshape to 2D array
+width = 640
+height = 480
+points_2d = points.reshape((height, width, 3))  # points_2d[y, x] = [X, Y, Z]
+
+# ---- IMPORTANT FIX ----
+# Flip Z in both points_2d AND points AND update pcd
+points_2d[:, :, 2] *= -1  # update the 2D representation
+points = points_2d.reshape(-1, 3)  # flatten back to (N,3)
+pcd.points = o3d.utility.Vector3dVector(points)  # update pcd
+# ------------------------
+
+# Example: coordinates clicked from RGB image
+clicked_points = [(332, 196)]  # (x, y)
+
+for x, y in clicked_points:
+    X, Y, Z = points_2d[y, x]
+    print(f"Pixel ({x},{y}) → Mirrored 3D = {X}, {Y}, {Z}")
+
+
+# Create a small sphere for each clicked point
+spheres = []
+for x, y in clicked_points:
+    sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.01)
+    sphere.translate(points_2d[y, x])   # uses mirrored coordinate
+    sphere.paint_uniform_color([1, 0, 0])  # red
+    spheres.append(sphere)
+
+# Visualize both the mirrored cloud and sphere
+o3d.visualization.draw_geometries([pcd, *spheres])
